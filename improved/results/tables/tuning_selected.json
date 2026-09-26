@@ -1,0 +1,46 @@
+{
+ "validation": [
+  "2010-01",
+  "2015-12"
+ ],
+ "XGBoost": {
+  "1": {
+   "n_estimators": 400,
+   "max_depth": 2,
+   "learning_rate": 0.03,
+   "subsample": 0.8,
+   "colsample_bytree": 0.8,
+   "min_child_weight": 5
+  },
+  "3": {
+   "n_estimators": 400,
+   "max_depth": 2,
+   "learning_rate": 0.03,
+   "subsample": 0.8,
+   "colsample_bytree": 0.8,
+   "min_child_weight": 5
+  },
+  "6": {
+   "n_estimators": 400,
+   "max_depth": 2,
+   "learning_rate": 0.03,
+   "subsample": 0.8,
+   "colsample_bytree": 0.8,
+   "min_child_weight": 5
+  }
+ },
+ "LSTM": {
+  "1": {
+   "window": 6,
+   "units": 16
+  },
+  "3": {
+   "window": 6,
+   "units": 16
+  },
+  "6": {
+   "window": 6,
+   "units": 16
+  }
+ }
+}

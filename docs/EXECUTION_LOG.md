@@ -113,7 +113,7 @@ Optimal lag (AIC): 12
 
 | Step | Executes | Result |
 |---|---|---|
-| Scale inputs | `MinMaxScaler` on Brent and WTI, **fitted on the full sample including the test period** | |
+| Scale inputs | `MinMaxScaler` on Brent and WTI, **fitted on the full sample including the test period** | Technically a leak, but with no numerical effect: the full-sample minimum and maximum of both series fall in the training period |
 | Sequences | 15-month windows of scaled Brent and WTI; target is the raw price next month | 505 sequences |
 | Split | Train 393 (fit 334, validate 59) / test 112 | |
 | Model | `LSTM(64) → Dense(32, relu) → Dense(1)`, Adam, MSE, 50 epochs, batch 32, **no seed, no early stopping** | one model per target |
@@ -157,9 +157,10 @@ Optimal lag (AIC): 12
 
 ---
 
-## Part B: improved pipeline (`improved/`)
+## Part B: 2026 re-audit pipeline (`improved/`)
 
-Run command: `python improved/run_all.py [--data FILE] [--out DIR] [--horizons 1 3 6] [--quick | --replot]`.
+Run command: `python improved/run_all.py [--data FILE] [--out DIR] [--horizons 1 3 6] [--quick | --replot]`,
+then `python improved/causality.py [--data FILE] [--out DIR]`.
 
 ### B1. Data (`data.py`)
 
@@ -174,63 +175,78 @@ Run command: `python improved/run_all.py [--data FILE] [--out DIR] [--horizons 1
 | Test | Executes | Output file |
 |---|---|---|
 | Stationarity | ADF and KPSS on log levels and log-returns of all 10 series | `tables/stationarity_adf_kpss.csv` |
-| Cointegration | Johansen trace test, log Brent and log WTI | `tables/johansen_brent_wti.csv` |
+| Cointegration | Johansen on log Brent and log WTI at the VECM's own BIC lag. Unrestricted constant (trace and max-eigenvalue; the case the VECM uses) and restricted constant (trace, hand-written, MacKinnon-Haug-Michelis critical values) | `tables/johansen_brent_wti.csv` |
 | Lag selection | `VAR(returns).select_order(12)` with AIC, BIC, HQIC and FPE | `tables/var_lag_selection.csv` |
 | Residual checks | Ljung-Box(12) and ARCH-LM(12) on in-sample VAR residuals | `tables/var_residual_tests.csv` |
 
-### B3. Original vs naive (`run_all.original_vs_naive`)
+### B3. Thesis results vs the matching naive forecast (`run_all.original_vs_naive`)
 
-This scores the no-change forecast on exactly the 112 months your submitted models
-were evaluated on, and puts it beside your submitted metrics. Outputs:
-`tables/original_results_vs_random_walk.csv` and
-`plots/original_vs_random_walk.png`.
+Each submitted thesis model is put next to the naive forecast for its own task, on
+the same 112 months: the one-step naive forecast for XGBoost and the LSTM, and the
+static naive forecast (Dec-2015 price held flat) for VARMAX's 1- to 112-step path.
+Outputs: `tables/original_results_vs_matching_naive.csv`,
+`plots/original_vs_matching_naive.png`.
 
-### B4. Models (`models.py`), run for h = 1, 3 and 6
+### B4. Hyperparameter tuning (`tuning.py`)
 
-For each horizon h, the forecast origins are every month t such that t + h
-falls in the test period.
+The data are truncated at 2015-12 first. Validation targets 2010-01 to 2015-12 are
+forecast with the same rolling-origin protocol as the test. XGBoost has 6 candidates
+(max depth 2/3/4 x learning rate 0.03/0.1), LSTM 4 (window 6/12 x units 16/32, 2 seeds
+each). Each is scored by RMSE relative to no-change, averaged over Brent and WTI; the
+best is chosen per horizon. Outputs: `tables/tuning_validation.csv`,
+`tables/tuning_selected.json`.
+
+### B5. Models (`models.py`), run for h = 1, 3 and 6
+
+The forecast origins are every month t such that t + h falls in the test or holdout window.
 
 | Model | Executes at each origin |
 |---|---|
 | Random walk | Forecast = price at t |
 | AR | `AutoReg` on each oil series' returns, lags chosen once by BIC, re-fitted every month, iterated h steps |
-| VAR | `VAR` on all 10 return series, lag chosen once by BIC (min 1), re-fitted every month, iterated h steps |
-| VECM | Johansen rank and lag chosen once, `VECM(deterministic='ci')` re-fitted every month, `predict(h)` |
-| XGBoost | Features: 6 lags of all 10 returns, the Brent-WTI spread and 12-month Brent volatility. The target is the h-month log change. Re-trained every January on rows whose target is already observed, one model per target |
-| LSTM | 12-month windows of 10 returns plus the spread, scaled on training data only. `LSTM(32) → Dropout(0.2) → Dense(16) → Dense(2)` with early stopping (patience 20, 15% chronological validation), 3 seeds averaged, deterministic ops, re-trained every January |
+| VAR | `VAR` on all 10 return series, lag chosen once by BIC (floored at 1), re-fitted every month, iterated h steps |
+| VECM | Lag chosen once by BIC; Johansen rank re-tested at every origin (trace, 5%, rank 0 allowed); `VECM(deterministic='co')` re-fitted every month; `predict(h)`. Rank path saved to `tables/vecm_rank_path.csv` |
+| XGBoost | 6 lags of all 10 returns, the Brent-WTI spread and 12-month Brent volatility. Target: h-month log change. Tuned hyperparameters. Re-trained every January on rows whose target is already observed |
+| LSTM | Sequences of 10 returns plus the spread, scaled on training data only. `LSTM(units) → Dropout(0.2) → Dense(16) → Dense(2)`, early stopping (patience 20, 15% chronological validation), 3 seeds averaged, deterministic ops, tuned window and units, re-trained every January |
 
-### B5. Evaluation (`evaluate.py`)
+### B6. Evaluation (`evaluate.py`)
 
 | Step | Executes | Output file |
 |---|---|---|
-| Metrics | RMSE, MAE, MAPE, RMSE relative to the random walk, directional accuracy | `tables/scores_all_horizons.csv` |
-| Significance | Diebold-Mariano test against the random walk, with HLN correction and h−1 autocovariances | same file |
-| By period | Relative RMSE for 2016-19, 2020-21, 2022-25 and 2026 (only periods with data) | `tables/period_scores_h{1,3,6}.csv` |
-| Forecasts | Every forecast in long format (date, horizon, model, target, forecast) | `tables/forecasts_all_horizons.csv` |
-| LSTM training | Loss curves for each year and seed | `tables/lstm_training_histories.json` |
+| Windows | Test 2016-01 to 2025-04; holdout 2025-05 onwards (only when the data reach it). Scored separately | `tables/scores_test.csv`, `tables/scores_holdout.csv` |
+| Metrics | RMSE, MAE, MAPE, RMSE relative to the random walk, directional accuracy | same files |
+| Clark-West | One-sided test of predictive content against the nested no-change forecast, on h-month log changes, Newey-West variance | same files |
+| Diebold-Mariano | Two-sided, HLN-corrected, h−1 autocovariances, squared $ errors | same files |
+| Holm | Applied to the 30 CW and the 30 DM p-values within each window | same files |
+| By period | Relative RMSE in four descriptive windows, with month counts; no tests | `tables/period_scores_h{1,3,6}.csv` |
+| Forecasts | Every forecast in long format | `tables/forecasts_all_horizons.csv` |
+| LSTM training | Loss curves for each year and seed (h=1) | `tables/lstm_training_histories.json` |
 
-### B6. Plots (`run_all.py`)
+### B7. Plots (`run_all.py`, `causality.py`)
 
 | Plot | File |
 |---|---|
-| Relative RMSE by horizon | `plots/rel_rmse_by_horizon.png` |
+| Relative RMSE by horizon, per window | `plots/rel_rmse_by_horizon_{test,holdout}.png` |
 | Relative RMSE by period (h=1) | `plots/rel_rmse_by_period_h1.png` |
-| Forecasts vs actual, one panel per model | `plots/forecasts_h{1,3,6}_{brent,wti}.png` |
-| SHAP beeswarm, XGBoost h=1 | `plots/shap_xgboost_h1_{brent,wti}.png` |
-| Original results vs naive | `plots/original_vs_random_walk.png` |
+| Forecasts vs actual (holdout shaded) | `plots/forecasts_h{1,3,6}_{brent,wti}.png` |
+| SHAP beeswarm, final-year XGBoost h=1 | `plots/shap_xgboost_h1_{brent,wti}.png` |
+| Thesis results vs matching naive | `plots/original_vs_matching_naive.png` |
+| Causality | `plots/granger_causality.png`, `plots/impulse_responses.png`, `plots/variance_decomposition.png` |
 
-### B7. Tests (`tests/test_no_lookahead.py`)
+### B8. Tests (`improved/tests/`)
 
-| Test | Checks |
+| File | Checks |
 |---|---|
-| `test_forecasts_ignore_future_data` ×6 (one per model) | Multiplies every observation after the last origin by random factors (0.2-5×); forecasts must be identical |
-| `test_features_at_t_use_only_data_up_to_t` | XGBoost features up to the cutoff are unchanged by the scrambled future data |
-| `test_forecast_index_is_origin_plus_horizon` | Forecasts are dated origin + h |
-| `test_balanced_sample_has_no_imputed_values` | The sample starts in 1984-01 and has no NaNs |
+| `test_no_lookahead.py` | 8 pipelines (random walk, AR, VAR, VECM, XGBoost x2 settings, LSTM x2 windows) x h = 1, 3, 6 x 3 origin blocks: all data after the last origin multiplied by random factors, forecasts must be identical (72 tests). A deliberately leaky model must fail (3). Tuning must give identical scores and choices when everything after 2015-12 is scrambled. Feature, dating and sample checks |
+| `test_evaluate.py` | Clark-West, Diebold-Mariano and Holm known-answer checks; own Johansen code matches statsmodels; VECM records a rank per origin |
+| `test_causality.py` | Impulse-response and variance-decomposition identities; a planted lead is detected |
 
 ---
 
 ## Part C: runs carried out during the review
+
+Rows 9-17 were produced by earlier versions of the re-audit code. Their outputs
+were deleted and regenerated from scratch in rows 18-22.
 
 | # | Run | Command | Runtime | Outcome |
 |---|---|---|---|---|
@@ -251,3 +267,8 @@ falls in the test period.
 | 15 | Causality analysis, thesis data | `python improved/causality.py` | ~5 s (500 bootstrap replications) | No commodity leads oil after correction; oil leads LNG and gas |
 | 16 | Causality analysis, latest data | `python improved/causality.py --data data/CMO-Historical-Data-Monthly_latest.xlsx --out improved/results_latest` | ~5 s | Same conclusions |
 | 17 | Tests | `python -m pytest improved/tests` | ~8 s | 13 passed (9 leak tests + 4 causality checks) |
+| 18 | Full test suite, revised code | `python -m pytest improved/tests` | ~4 min | 92 passed (81 leakage and data checks, 7 evaluation checks, 4 causality checks) |
+| 19 | Clean regeneration, thesis data | `python improved/run_all.py`, then `python improved/causality.py` | ~12 min (tuning ~8 min) | Exit 0. Test window 2016-01 to 2025-04; no model significant after Holm (lowest Clark-West Holm p = 0.18) |
+| 20 | Clean regeneration, latest data | `python improved/run_all.py --data data/CMO-Historical-Data-Monthly_latest.xlsx --out improved/results_latest`, then `causality.py` with the same arguments | ~16 min | Exit 0. Holdout 2025-05 to 2026-08 scored separately; lowest Clark-West Holm p = 0.88 |
+| 21 | Redraw with fixed period labels | `python improved/run_all.py --replot` (both folders) | ~20 s each | Period tables and figures rewritten by the pipeline code |
+| 22 | Johansen implementation check | Own trace statistic vs statsmodels at lags 1, 2, 4 (unrestricted constant) | <1 s | Identical; now a unit test |

@@ -85,22 +85,33 @@ def run_var(prices, origins, h):
     return _to_prices(prices, origins, h, out)
 
 
+VECM_DETERMINISTIC = "co"  # unrestricted constant: the case statsmodels' Johansen test (det_order=0) assumes
+
+
 def run_vecm(prices, origins, h):
     """Vector error-correction model on log Brent and log WTI.
 
-    Brent and WTI are cointegrated (Johansen test in diagnostics), so a VECM keeps
-    the long-run link between them instead of throwing it away by differencing.
+    Specification kept internally consistent:
+    - deterministic terms: unrestricted constant ("co"), the same case as the
+      Johansen critical values used to pick the rank (det_order=0). A restricted
+      constant is checked as a robustness case in diagnostics.py.
+    - lag: k_ar_diff chosen once by BIC on data up to the first origin.
+    - rank: re-tested with the Johansen trace test (5%) at every origin, on data up
+      to that origin. Rank 0 is allowed and gives a VAR in differences.
     """
     logp = np.log(prices[TARGETS])
     first = logp.loc[: origins[0]].to_numpy()
-    k = select_order(first, maxlags=MAX_LAGS, deterministic="ci").bic
-    rank = max(select_coint_rank(first, det_order=0, k_ar_diff=k).rank, 1)
-    out = np.zeros((len(origins), 2))
+    k = select_order(first, maxlags=MAX_LAGS, deterministic=VECM_DETERMINISTIC).bic
+    out, ranks = np.zeros((len(origins), 2)), []
     for i, t in enumerate(origins):
         y = logp.loc[:t].to_numpy()
-        res = VECM(y, k_ar_diff=k, coint_rank=rank, deterministic="ci").fit()
+        rank = select_coint_rank(y, det_order=0, k_ar_diff=k, method="trace", signif=0.05).rank
+        res = VECM(y, k_ar_diff=k, coint_rank=rank, deterministic=VECM_DETERMINISTIC).fit()
         out[i] = res.predict(steps=h)[-1] - y[-1]
-    return _to_prices(prices, origins, h, out)
+        ranks.append(rank)
+    fc = _to_prices(prices, origins, h, out)
+    fc.attrs["vecm"] = {"k_ar_diff": int(k), "origins": [f"{t:%Y-%m}" for t in origins], "ranks": [int(r) for r in ranks]}
+    return fc
 
 
 # --------------------------------------------------------------------------- #
@@ -108,7 +119,12 @@ def run_vecm(prices, origins, h):
 # --------------------------------------------------------------------------- #
 
 N_RET_LAGS = 6  # XGBoost: months of lagged returns per series
-WINDOW = 12     # LSTM: months in each input sequence
+
+# Hyperparameters used before validation-based tuning was added (kept as the
+# default and as one candidate in tuning.py).
+XGB_DEFAULT = dict(n_estimators=400, max_depth=3, learning_rate=0.03, subsample=0.8,
+                   colsample_bytree=0.8, min_child_weight=5)
+LSTM_DEFAULT = dict(window=12, units=32)
 
 
 def make_features(prices):
@@ -131,12 +147,11 @@ def _training_rows(index, cutoff, h):
     return index[index + pd.DateOffset(months=h) <= cutoff]
 
 
-def run_xgboost(prices, origins, h, seed=42):
+def run_xgboost(prices, origins, h, params=None, seed=42):
     from xgboost import XGBRegressor
 
     X_all, Y_all = make_features(prices), make_targets(prices, h)
-    params = dict(n_estimators=400, max_depth=3, learning_rate=0.03, subsample=0.8,
-                  colsample_bytree=0.8, min_child_weight=5, random_state=seed, n_jobs=4)
+    params = {**XGB_DEFAULT, **(params or {}), "random_state": seed, "n_jobs": 4}
     out, models = np.zeros((len(origins), 2)), {}
     pos = {t: i for i, t in enumerate(origins)}
     for group in _yearly_groups(origins):
@@ -151,14 +166,15 @@ def run_xgboost(prices, origins, h, seed=42):
     return fc
 
 
-def _sequences(feats, ends):
-    """Stack the WINDOW rows ending at each date in ``ends`` -> (n, WINDOW, n_features)."""
+def _sequences(feats, ends, window):
+    """Stack the `window` rows ending at each date in ``ends`` -> (n, window, n_features)."""
     loc = feats.index.get_indexer(ends)
-    return np.stack([feats.iloc[i - WINDOW + 1 : i + 1].to_numpy() for i in loc])
+    return np.stack([feats.iloc[i - window + 1 : i + 1].to_numpy() for i in loc])
 
 
-def run_lstm(prices, origins, h, seeds=(0, 1, 2), max_epochs=300, verbose=0):
-    """Two-output LSTM on 12-month windows of returns; averaged over several seeds."""
+def run_lstm(prices, origins, h, window=LSTM_DEFAULT["window"], units=LSTM_DEFAULT["units"],
+             seeds=(0, 1, 2), max_epochs=300, verbose=0):
+    """Two-output LSTM on `window`-month sequences of returns; averaged over several seeds."""
     os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
     import tensorflow as tf
     from tensorflow import keras
@@ -167,26 +183,26 @@ def run_lstm(prices, origins, h, seeds=(0, 1, 2), max_epochs=300, verbose=0):
     rets = log_returns(prices)
     feats = rets.join(np.log(prices["brent"] / prices["wti"]).rename("spread")).dropna()
     Y_all = make_targets(prices, h)
-    valid = feats.index[WINDOW - 1 :].intersection(Y_all.index)
+    valid = feats.index[window - 1 :].intersection(Y_all.index)
 
     out = np.zeros((len(origins), 2))
     pos = {t: i for i, t in enumerate(origins)}
     histories = []
     for group in _yearly_groups(origins):
         rows = _training_rows(valid, group[0], h)
-        X, Y = _sequences(feats, rows), Y_all.loc[rows].to_numpy()
+        X, Y = _sequences(feats, rows, window), Y_all.loc[rows].to_numpy()
         # Scale with training statistics only.
         x_mu, x_sd = X.reshape(-1, X.shape[-1]).mean(0), X.reshape(-1, X.shape[-1]).std(0)
         y_mu, y_sd = Y.mean(0), Y.std(0)
         Xs, Ys = (X - x_mu) / x_sd, (Y - y_mu) / y_sd
-        X_new = (_sequences(feats, group) - x_mu) / x_sd
+        X_new = (_sequences(feats, group, window) - x_mu) / x_sd
 
         preds = []
         for seed in seeds:
             keras.utils.set_random_seed(seed)
             model = keras.Sequential([
                 keras.Input(shape=Xs.shape[1:]),
-                keras.layers.LSTM(32),
+                keras.layers.LSTM(units),
                 keras.layers.Dropout(0.2),
                 keras.layers.Dense(16, activation="relu"),
                 keras.layers.Dense(2),

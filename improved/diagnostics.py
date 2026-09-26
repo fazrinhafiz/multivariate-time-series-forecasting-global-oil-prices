@@ -14,7 +14,7 @@ import pandas as pd
 from statsmodels.stats.diagnostic import acorr_ljungbox, het_arch
 from statsmodels.tsa.api import VAR
 from statsmodels.tsa.stattools import adfuller, kpss
-from statsmodels.tsa.vector_ar.vecm import coint_johansen
+from statsmodels.tsa.vector_ar.vecm import coint_johansen, select_order
 
 from data import TARGETS, log_returns
 
@@ -35,12 +35,62 @@ def stationarity(prices: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+# MacKinnon-Haug-Michelis (1999) 5% trace critical values for two variables,
+# restricted constant (Case 2, constant only inside the cointegrating relation).
+CASE2_TRACE_CV5 = {0: 20.2618, 1: 9.1645}
+
+
+def johansen_trace(y: np.ndarray, k: int, restricted_constant: bool) -> np.ndarray:
+    """Johansen trace statistics for rank 0..n-1.
+
+    restricted_constant=False: unrestricted constant (Case 3; should match statsmodels
+    coint_johansen with det_order=0). True: constant restricted to the cointegrating
+    relation (Case 2), which statsmodels does not provide.
+    """
+    dy = np.diff(y, axis=0)
+    n, T = y.shape[1], len(dy) - k
+    z0 = dy[k:]
+    z1 = y[k:-1]
+    lagged = [dy[k - i: len(dy) - i] for i in range(1, k + 1)]
+    z2 = np.hstack(lagged) if lagged else np.empty((T, 0))
+    if restricted_constant:
+        z1 = np.hstack([z1, np.ones((T, 1))])
+    else:
+        z2 = np.hstack([z2, np.ones((T, 1))])
+
+    def resid(z):
+        if z2.shape[1] == 0:
+            return z
+        return z - z2 @ np.linalg.lstsq(z2, z, rcond=None)[0]
+
+    r0, r1 = resid(z0), resid(z1)
+    s00, s11, s01 = r0.T @ r0 / T, r1.T @ r1 / T, r0.T @ r1 / T
+    m = np.linalg.solve(s11, s01.T) @ np.linalg.solve(s00, s01)
+    lam = np.sort(np.linalg.eigvals(m).real)[::-1][:n]
+    return np.array([-T * np.log(1 - lam[r:]).sum() for r in range(n)])
+
+
 def johansen(prices: pd.DataFrame) -> pd.DataFrame:
-    """Johansen trace test for cointegration between log Brent and log WTI."""
-    res = coint_johansen(np.log(prices[TARGETS]), det_order=0, k_ar_diff=2)
-    return pd.DataFrame({"H0: rank <=": [0, 1], "trace stat": res.lr1,
-                         "5% critical value": res.cvt[:, 1],
-                         "reject H0": res.lr1 > res.cvt[:, 1]})
+    """Johansen tests for log Brent and log WTI, using the VECM's own lag (BIC).
+
+    Main case (used by the VECM): unrestricted constant, trace and max-eigenvalue.
+    Robustness case: restricted constant (trace only).
+    """
+    logp = np.log(prices[TARGETS])
+    k = select_order(logp.to_numpy(), maxlags=12, deterministic="co").bic
+    res = coint_johansen(logp, det_order=0, k_ar_diff=k)
+    case2 = johansen_trace(logp.to_numpy(), k, restricted_constant=True)
+    rows = []
+    for r in range(2):
+        rows.append({"case": "unrestricted constant (used by VECM)", "k_ar_diff": k, "H0: rank <=": r,
+                     "trace stat": res.lr1[r], "trace 5% cv": res.cvt[r, 1],
+                     "max-eig stat": res.lr2[r], "max-eig 5% cv": res.cvm[r, 1],
+                     "reject H0 (trace)": res.lr1[r] > res.cvt[r, 1]})
+    for r in range(2):
+        rows.append({"case": "restricted constant (robustness)", "k_ar_diff": k, "H0: rank <=": r,
+                     "trace stat": case2[r], "trace 5% cv": CASE2_TRACE_CV5[r],
+                     "reject H0 (trace)": case2[r] > CASE2_TRACE_CV5[r]})
+    return pd.DataFrame(rows)
 
 
 def var_lag_selection(prices: pd.DataFrame) -> pd.DataFrame:

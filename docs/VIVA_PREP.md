@@ -1,11 +1,17 @@
-# Viva preparation
+# Viva preparation (archived)
+
+> **Archived.** Written in September 2026 for a viva that had in fact already taken
+> place (the thesis was examined on 2 August 2025). Kept for its question list. Where
+> it cites re-audit numbers, the current figures and tests (Clark-West, Holm
+> correction, tuned hyperparameters) are in `improved/results*/tables/scores_test.csv`
+> and the README; they supersede the numbers below.
 
 The questions an examiner is most likely to ask about this project, roughly
 from most to least likely, each with a suggested answer. The answers assume
 you present the **improved** results (see `improved/results/`). If you have to
 defend the submitted version as it stands, section B covers that.
 
-Numbers in brackets refer to `improved/results/tables/scores_all_horizons.csv`.
+Numbers in brackets referred to an earlier results file that has since been regenerated.
 
 ---
 
@@ -123,8 +129,11 @@ here's what it changes" than to a defence that falls apart under questioning.
 
 **"Did you compare against a naive benchmark?"**
 > Not in the submitted report, and that's its main weakness. When I did,
-> the no-change forecast had lower RMSE than all three models (Brent 5.93 vs
-> the LSTM's 9.14). I re-ran the study under one protocol with proper
+> the one-step no-change forecast had lower RMSE than the two one-step models
+> (Brent 5.93 vs the LSTM's 9.14 and XGBoost's 16.15). VARMAX solved a different,
+> multi-step task: against the matching static naive forecast (Dec-2015 price held
+> flat, RMSE 35.65) it does better, but only because it was given the actual future
+> prices of the other commodities. I re-ran the study under one protocol with proper
 > benchmarks, and the conclusion changes: no model beats no-change.
 
 **"Why did the LSTM do best?"**
@@ -167,8 +176,9 @@ here's what it changes" than to a defence that falls apart under questioning.
 - **Expanding window.** Each origin trains on all data up to that point.
   A rolling window would drop old data instead.
 - **Direction accuracy.** The share of months with the correct sign of change.
-  50% is a coin toss. The LSTM's 61% for WTI at h = 1 gives p = 0.03 on a
-  binomial test. Be ready to say this is one result out of many comparisons.
+  50% is a coin toss. An earlier ad hoc binomial test (not in the repo code) gave
+  p = 0.03 for the LSTM's 61% on WTI at h = 1; it ignored multiple comparisons and
+  is superseded by the Clark-West results.
 - **Why XGBoost gets worse with horizon.** A direct h-step tree model has
   fewer effective training samples and learns pre-2016 patterns. Trees can
   also only output averages of training targets, so they can't anticipate a

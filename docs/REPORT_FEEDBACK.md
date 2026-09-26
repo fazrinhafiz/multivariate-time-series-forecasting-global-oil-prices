@@ -1,5 +1,11 @@
 # Report feedback (`Report.pdf`)
 
+> **Scope.** This reviews the 23-page `Report.pdf` summary, not the full thesis
+> (.docx, examined 2 August 2025), which is not in this repository and has its own
+> reference list. The reference checks below apply to `Report.pdf` only. The thesis
+> itself is historical work and is not being revised; see the README for how its
+> claims relate to the code.
+
 Section-by-section notes, most important first within each group. Methodology
 problems in the code are covered in [METHODOLOGY_REVIEW.md](METHODOLOGY_REVIEW.md);
 this file is about the write-up itself.
