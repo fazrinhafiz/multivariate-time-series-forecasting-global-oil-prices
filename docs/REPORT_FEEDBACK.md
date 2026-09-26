@@ -25,8 +25,9 @@ this file is about the write-up itself.
 4. **Section 7.1.** Winsorization and Min-Max scaling are described as
    preprocessing, but no model uses the winsorized or scaled data.
 5. **Section 10 Outcomes.** "LSTM ... particularly useful during times of
-   volatility and regime change" isn't tested anywhere. The improved pipeline
-   tests it by period, and no model reliably beats no-change in any period.
+   volatility and regime change" isn't tested anywhere. The 2026 re-audit only
+   describes accuracy by period (the windows were chosen after seeing the data),
+   and no model shows significant predictive content over no-change overall.
 6. **Section 10, Breusch-Pagan paragraph.** The test regresses on random numbers
    and gives a different answer every run (see METHODOLOGY_REVIEW 2.4). Delete
    the paragraph and the argument built on it. Report ARCH-LM on model
@@ -106,15 +107,16 @@ Most MSc marking schemes expect the following, and the report currently has none
 
 The honest result is also a defensible one, and it matches the literature:
 
-> At horizons of 1–6 months, neither econometric nor machine-learning models
-> reliably beat the no-change forecast for Brent or WTI (Diebold-Mariano
-> tests are significant at 5%). Relative performance changes with the market
-> regime. Every model gains during the COVID-19 collapse and rebound, with
-> univariate AR and the VECM gaining most. XGBoost deteriorates sharply in
-> the 2022 energy crisis and at longer horizons. A 10-commodity VAR is no
-> better than a univariate AR, so related commodity prices don't improve
-> point forecasts at these horizons.
+> At horizons of 1–6 months, no econometric or machine-learning model shows
+> statistically significant predictive content over the no-change forecast for
+> Brent or WTI (Clark-West tests, Holm-corrected across 30 comparisons).
+> Point estimates are within a few percent of no-change, except XGBoost, which
+> is 4-41% worse. Described by period (not tested), univariate AR and the VECM
+> were 8-9% better than no-change during the COVID-19 collapse and rebound. A
+> 10-commodity VAR is no better than a univariate AR, so related commodity
+> prices don't improve point forecasts at these horizons.
 
+These are the current re-audit results (`improved/results/tables/scores_test.csv`).
 This answers both research questions with evidence, which is what an
 examiner needs to see. The claim that "LSTM is best" doesn't survive a
 benchmark check.

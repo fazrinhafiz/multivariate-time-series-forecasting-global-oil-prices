@@ -75,7 +75,8 @@ naive forecast for each model's own task, on the same 112 months:
 
 The two one-month models are worse than doing nothing. VARMAX beats its naive
 benchmark, but only because it was given the actual future prices of the related
-commodities, which a real forecaster would not have.
+commodities, which a real forecaster would not have. VARMAX's apparent improvement is not directly comparable to the other models because it uses realised future values of the other commodity series as exogenous inputs. It is therefore
+not part of any "best model" conclusion.
 
 ![Thesis results vs the matching naive forecast](improved/results/plots/original_vs_matching_naive.png)
 
@@ -139,6 +140,7 @@ treat these p-values as approximate.
 ## Part 3: Holdout, 2025-05 to 2026-08
 
 These 16 months were released by the World Bank after the thesis data ended.
+The current pipeline treats this period as a holdout, although an earlier version of the re-audit had previously evaluated part of this period. Results are therefore interpreted cautiously.
 
 - **No design decision in the current pipeline uses them.** Tuning, lag selection
   and model choice use data up to 2015-12 or up to each forecast origin.
@@ -174,7 +176,7 @@ Naive RMSE at h = 1: Brent 11.67, WTI 8.56.
   forecasts overlap. Differences of a few percent in RMSE cannot be told apart
   from noise.
 - **Test-set reuse.** The 2016-2025 test months were examined repeatedly: by the
-  thesis, then by the re-audit. The holdout was seen once under an earlier design.
+  thesis, then by the re-audit. For the holdout: The current pipeline treats this period as a holdout, although an earlier version of the re-audit had previously evaluated part of this period. Results are therefore interpreted cautiously.
   No window here is a clean, never-seen holdout.
 - **Limited tuning.** Small, pre-specified grids for XGBoost (6 candidates) and the
   LSTM (4 candidates). The chosen LSTM setting for h = 1 changed between the two

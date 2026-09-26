@@ -33,7 +33,7 @@ is imputed. Models work on log-returns (the VECM on log levels).
 | Training history | 1984-01 onwards, expanding | Estimation at every origin |
 | **Validation** | 2010-01 to 2015-12 | Choosing XGBoost and LSTM hyperparameters only (`tuning.py`) |
 | **Test** | 2016-01 to 2025-04 | The months the thesis was scored on; main re-audit results |
-| **Holdout** | 2025-05 onwards | Data released after the thesis data ended; scored separately |
+| **Holdout** | 2025-05 onwards | Data released after the thesis data ended; scored separately. An earlier version of the re-audit had previously evaluated part of this period, so its results are interpreted cautiously |
 
 **Forecasting.** Rolling origins with an expanding window. AR, VAR and VECM are
 re-estimated at every origin and forecast h steps iteratively. XGBoost and the LSTM
