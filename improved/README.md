@@ -12,7 +12,8 @@ pip install -r requirements.txt
 
 python improved/run_all.py --quick      # about 1 minute: h=1, one LSTM seed
 python improved/run_all.py              # full run: h=1,3,6, 3-seed LSTM (about 15-25 min on CPU)
-python -m pytest improved/tests         # look-ahead bias tests
+python improved/causality.py            # Granger causality, impulse responses, variance decomposition
+python -m pytest improved/tests         # leak tests and causality checks
 ```
 
 To use a newer World Bank Pink Sheet, download `CMO-Historical-Data-Monthly.xlsx`
@@ -55,4 +56,6 @@ random walk. Scores are also split by period: 2016-19, 2020-21 (COVID) and
 | `evaluate.py` | Metrics, the Diebold-Mariano test and the period breakdown |
 | `diagnostics.py` | ADF/KPSS, Johansen, VAR lag selection, Ljung-Box and ARCH-LM |
 | `run_all.py` | Runs everything and writes `results/tables` and `results/plots` |
+| `causality.py` | Granger causality (both directions, Holm-corrected), generalized impulse responses with bootstrap bands, generalized variance decomposition |
 | `tests/test_no_lookahead.py` | Changes all data after the forecast origin and checks that no forecast moves |
+| `tests/test_causality.py` | Checks the impulse-response and variance-decomposition maths, and that a planted lead is detected |

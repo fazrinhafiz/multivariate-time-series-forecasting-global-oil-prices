@@ -248,3 +248,6 @@ falls in the test period.
 | 12 | Newer data download | World Bank Commodity Markets page → `data/CMO-Historical-Data-Monthly_latest.xlsx` (587 KB, published 2026-09-02) | ~2 s | Data to 2026-08. Past values changed only by rounding (≤ $0.50) |
 | 13 | Improved full run, latest data | `python improved/run_all.py --data data/CMO-Historical-Data-Monthly_latest.xlsx --out improved/results_latest` | ~5 min of model fitting (longer wall time while other jobs shared the CPU) | Exit 0. Test period to 2026-08 (128 months). Results in `improved/results_latest/`, summary in METHODOLOGY_REVIEW §7 |
 | 14 | Run ledger page | Built from the result tables and published as an artifact | <1 min | Interactive version of this file |
+| 15 | Causality analysis, thesis data | `python improved/causality.py` | ~5 s (500 bootstrap replications) | No commodity leads oil after correction; oil leads LNG and gas |
+| 16 | Causality analysis, latest data | `python improved/causality.py --data data/CMO-Historical-Data-Monthly_latest.xlsx --out improved/results_latest` | ~5 s | Same conclusions |
+| 17 | Tests | `python -m pytest improved/tests` | ~8 s | 13 passed (9 leak tests + 4 causality checks) |

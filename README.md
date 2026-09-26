@@ -122,6 +122,22 @@ Each number is the model's RMSE divided by the naive forecast's RMSE, so below
 
 ![Relative RMSE by horizon](improved/results_latest/plots/rel_rmse_by_horizon.png)
 
+### Do related markets lead oil? (`improved/causality.py`)
+
+Granger causality tests, impulse responses and a variance decomposition answer
+research question 1 directly:
+
+- **No related commodity significantly leads oil** after correcting for 32
+  tests. Copper comes closest (Holm p ≈ 0.09).
+- **Oil leads them instead.** Oil predicts Japanese LNG 4-6 months ahead
+  (consistent with oil-indexed LNG contracts), and US and European gas 1-2 months ahead.
+- **Co-movement is mostly same-month.** Copper is the largest outside source
+  of oil price surprises (about 5%). European gas explains almost none (0.1%),
+  so its high SHAP importance in the thesis likely reflected shared price
+  trends rather than predictive power.
+
+![Granger causality](improved/results/plots/granger_causality.png)
+
 ---
 
 ## Repository layout
@@ -135,7 +151,7 @@ Each number is the model's RMSE divided by the naive forecast's RMSE, so below
 | `improved/` | Rebuilt evaluation pipeline. See [improved/README.md](improved/README.md) |
 | `improved/results/` | Re-audit results on the thesis data |
 | `improved/results_latest/` | Re-audit results on the latest data |
-| `docs/METHODOLOGY_REVIEW.md` | Full review: reproduction, issues, results, and the thesis's design intent (§8) |
+| `docs/METHODOLOGY_REVIEW.md` | Full review: reproduction, issues, results, the thesis's design intent (§8) and causality analysis (§9) |
 | `docs/EXECUTION_LOG.md` | What every section of both pipelines runs, and every review run |
 | `docs/REPORT_FEEDBACK.md` | Notes on the report text and references |
 | `docs/VIVA_PREP.md` | Likely questions with suggested answers |
@@ -149,5 +165,6 @@ python code_full.py                  # thesis pipeline (~15 min; the VARMAX fit 
 python improved/run_all.py --quick   # re-audit smoke test (~1 min)
 python improved/run_all.py           # full re-audit, thesis data
 python improved/run_all.py --data data/CMO-Historical-Data-Monthly_latest.xlsx --out improved/results_latest
-python -m pytest improved/tests      # look-ahead (leak) tests
+python improved/causality.py         # Granger causality, impulse responses, variance decomposition
+python -m pytest improved/tests      # leak tests and causality checks
 ```
