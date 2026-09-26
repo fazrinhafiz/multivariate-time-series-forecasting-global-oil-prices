@@ -1,6 +1,7 @@
+# Python 3.9-3.12 (TensorFlow 2.19 does not support 3.13+). Tested on 3.12, macOS arm64.
 matplotlib==3.9.4
-matplotlib-inline @ file:///opt/conda/conda-bld/matplotlib-inline_1662014470464/work
 numpy==1.26.4
+openpyxl==3.1.5
 pandas==2.2.3
 scikit-learn==1.6.1
 scipy==1.13.1
@@ -8,5 +9,5 @@ seaborn==0.13.2
 shap==0.47.2
 statsmodels==0.14.4
 tensorflow==2.19.0
-tensorflow-io-gcs-filesystem==0.37.1
 xgboost==2.1.4
+pytest==9.1.1
