@@ -50,7 +50,7 @@ forecast for *its* task, on the same 112 test months:
 
 The two one-step models are worse than doing nothing. VARMAX beats its matching
 naive forecast, but as a *scenario* model: with real-time inputs it would not have
-had those commodity prices. (An earlier version of this section compared VARMAX
+had those commodity prices. VARMAX's apparent improvement is not directly comparable to the other models because it uses realised future values of the other commodity series as exogenous inputs. (An earlier version of this section compared VARMAX
 with the one-step naive forecast and said all three models lost to naive; that
 was the wrong comparison for VARMAX's task.)
 Table and plot: `improved/results/tables/original_results_vs_matching_naive.csv`,
@@ -121,7 +121,7 @@ prices, and the opposite of the report's conclusion for Brent.
    differencing made the series stationary. Use ADF and KPSS together, on both
    levels and returns.
 4. **Cointegration was ignored.** `coint_johansen` is imported (l.24) but never
-   used. Brent and WTI are strongly cointegrated (trace statistic 41.1 vs 5%
+   used. Brent and WTI are strongly cointegrated (trace statistic 43.98 at the BIC lag of 1 vs 5%
    critical value 15.5). Differencing both throws away that long-run link. A
    VECM is the model the econometrics literature would expect here.
 5. **Look-ahead in the LSTM scaler** (l.490-491). The `MinMaxScaler` is fitted on
@@ -260,7 +260,7 @@ Data: `data/CMO-Historical-Data-Monthly_latest.xlsx`, published by the World Ban
 2026-09-02. Past values differ from the thesis data only by rounding (at most
 $0.50). Outputs: `improved/results_latest/tables/scores_holdout.csv`.
 
-**Status.**
+**Status.** The current pipeline treats this period as a holdout, although an earlier version of the re-audit had previously evaluated part of this period. Results are therefore interpreted cautiously.
 - No design decision in the current pipeline uses these months. Tuning uses data
   to 2015-12; lags and ranks use data up to each origin.
 - An earlier version of the re-audit (September 2026) reported a pooled 2016-2026
