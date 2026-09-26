@@ -138,8 +138,11 @@ def plot_shap(fc_xgb, tgt, path):
 
 def original_vs_naive(raw):
     """Compare the submitted results with the random walk on the identical test months."""
+    # Score on exactly the months the submitted models were evaluated on (2016-01 to 2025-04),
+    # even when a newer data file extends further.
+    months = pd.read_csv(ROOT / "tables" / "forecast_varmax.csv", index_col=0, parse_dates=True).index
     p = raw[TARGETS]
-    actual, rw = p.loc[TEST_START:], p.shift(1).loc[TEST_START:]
+    actual, rw = p.loc[months], p.shift(1).loc[months]
     rows = []
     for tgt, fname in [("brent", "evaluation_results_brent.csv"), ("wti", "evaluation_results_wti.csv")]:
         shipped = pd.read_csv(ROOT / "tables" / fname, index_col=0)

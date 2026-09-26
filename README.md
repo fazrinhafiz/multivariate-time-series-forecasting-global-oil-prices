@@ -12,7 +12,9 @@ are coal, natural gas, LNG, palm oil, copper and gold.
 | `code_full.py`, `code_full.ipynb` | **Original submission** pipeline (VARMAX, XGBoost, LSTM), unchanged |
 | `Report.pdf`, `plots/`, `tables/` | Original report and its outputs |
 | `improved/` | **Rebuilt pipeline**: one out-of-sample protocol, benchmarks, significance tests, leakage tests. See [improved/README.md](improved/README.md) |
-| `improved/results/` | Tables and figures from the improved pipeline |
+| `improved/results/` | Tables and figures from the improved pipeline (thesis data, to 2025-04) |
+| `improved/results_latest/`, `data/` | Same pipeline on the newest World Bank data (to 2026-08) |
+| `docs/EXECUTION_LOG.md` | Section-by-section record of what every part of the code executes, and every review run |
 | `docs/METHODOLOGY_REVIEW.md` | Examiner-style review of the original code, with reproduction results |
 | `docs/REPORT_FEEDBACK.md` | Section-by-section report corrections, including reference checks |
 | `docs/VIVA_PREP.md` | Likely viva questions with suggested answers |
@@ -26,7 +28,7 @@ tasks.
 
 Under a single strictly out-of-sample protocol (2016-01 to 2025-04; horizons
 of 1, 3 and 6 months), **no model significantly beats the no-change forecast**.
-That is consistent with the oil forecasting literature. Details and tables:
+That is consistent with the oil forecasting literature, and it still holds with 16 more months of data (to 2026-08). Details and tables:
 [docs/METHODOLOGY_REVIEW.md §6](docs/METHODOLOGY_REVIEW.md#6-results-of-the-improved-pipeline).
 
 ![Relative RMSE by horizon](improved/results/plots/rel_rmse_by_horizon.png)

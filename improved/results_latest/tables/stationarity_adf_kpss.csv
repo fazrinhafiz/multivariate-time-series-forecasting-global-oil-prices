@@ -1,0 +1,21 @@
+series,transform,ADF p-value,KPSS p-value,verdict
+brent,log level,0.6695349428303106,0.01,non-stationary
+wti,log level,0.4086238982222875,0.01,non-stationary
+coal_au,log level,0.4511627268069977,0.01,non-stationary
+coal_za,log level,0.3900061860012021,0.01,non-stationary
+gas_us,log level,0.4549891263497694,0.01,non-stationary
+gas_eu,log level,0.5523339120874307,0.01,non-stationary
+lng_jp,log level,0.7018978565746058,0.01,non-stationary
+palm_oil,log level,0.10683094700878265,0.01,non-stationary
+copper,log level,0.4851586303783752,0.01,non-stationary
+gold,log level,0.95970544814583,0.01,non-stationary
+brent,log-return,5.853070638202347e-16,0.1,stationary
+wti,log-return,2.0804881227754174e-26,0.1,stationary
+coal_au,log-return,6.951801955656446e-10,0.1,stationary
+coal_za,log-return,5.0620259036286905e-18,0.1,stationary
+gas_us,log-return,2.850940492144762e-08,0.1,stationary
+gas_eu,log-return,9.957030647638076e-10,0.1,stationary
+lng_jp,log-return,5.5514825688619825e-15,0.1,stationary
+palm_oil,log-return,1.0225525976522367e-12,0.1,stationary
+copper,log-return,4.785616401694504e-06,0.1,stationary
+gold,log-return,1.581321441732567e-26,0.06828127416290142,stationary

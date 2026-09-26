@@ -236,3 +236,32 @@ Diebold-Mariano p-value against the random walk (HLN-corrected).
 These results are consistent with the oil forecasting literature: at short
 horizons the no-change forecast is very hard to beat (Alquist, Kilian &
 Vigfusson, 2013).
+
+---
+
+## 7. Update: re-run on the newest World Bank data (to 2026-08)
+
+Data: `data/CMO-Historical-Data-Monthly_latest.xlsx`, published by the World
+Bank on 2026-09-02. Past values changed only by rounding (≤ $0.50). The test
+period now runs 2016-01 to 2026-08 (128 months). It includes a spring-2026
+spike: Brent went from $71 in February to $104 in March and $120 in April,
+then fell back to about $85. Outputs: `improved/results_latest/`.
+
+| RMSE ÷ random walk | Brent h=1 | h=3 | h=6 | WTI h=1 | h=3 | h=6 |
+|---|---|---|---|---|---|---|
+| AR | 0.964 | 1.034 | 1.014 | 0.975 | 1.028* | 1.021 |
+| VAR | 1.006 | 1.041 | 1.006 | 0.989 | 1.027 | 1.009 |
+| VECM | 0.971 | 1.036 | 1.005 | 0.975 | 1.024 | 0.995 |
+| XGBoost | 1.062 | 1.129 | 1.291 | 1.060 | 1.165 | 1.356 |
+| LSTM | 0.976 | 1.001 | 0.959 | 0.983 | 1.006 | 0.995 |
+
+\* The only significant difference (DM p = 0.048), and it's a model doing
+*worse* than no-change.
+
+- **The conclusion holds.** No model significantly beats no-change at any horizon.
+- **The LSTM's small edge shrinks.** Brent h = 1 goes from 0.958 to 0.976,
+  and directional accuracy falls to 56-57%. The earlier edge was partly luck
+  of the sample period.
+- **2026 spike (h = 1):** AR and VECM are 5-7% better than no-change, the
+  LSTM is level with it, and XGBoost is 5-10% worse. Simple persistence models
+  again cope best with a sharp shock.

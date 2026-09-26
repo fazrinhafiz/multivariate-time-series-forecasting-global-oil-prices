@@ -8,6 +8,7 @@ PERIODS = {
     "2016-19 (calm)": ("2016-01", "2019-12"),
     "2020-21 (COVID)": ("2020-01", "2021-12"),
     "2022-25 (energy crisis)": ("2022-01", "2025-12"),
+    "2026 (spring spike)": ("2026-01", "2026-12"),
 }
 
 
@@ -63,6 +64,8 @@ def score(actual: pd.DataFrame, forecasts: dict, h: int) -> pd.DataFrame:
 def score_by_period(actual: pd.DataFrame, forecasts: dict) -> pd.DataFrame:
     rows = []
     for period, (a, b) in PERIODS.items():
+        if actual.loc[a:b].empty:  # period lies beyond the data
+            continue
         rw = forecasts["Random walk"].loc[a:b]
         for tgt in actual:
             for name, fc in forecasts.items():
