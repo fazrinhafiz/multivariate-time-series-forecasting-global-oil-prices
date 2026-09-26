@@ -1,0 +1,5 @@
+caused,causing,lag,F,p,sample
+brent,all 8 non-oil commodities,1,2.0250920594521036,0.03982544249195818,full
+wti,all 8 non-oil commodities,1,1.8524129738420196,0.06303333673548332,full
+brent,all 8 non-oil commodities,1,1.2951179375029822,0.24099691357208985,train
+wti,all 8 non-oil commodities,1,1.2610537268679525,0.2592568850728729,train

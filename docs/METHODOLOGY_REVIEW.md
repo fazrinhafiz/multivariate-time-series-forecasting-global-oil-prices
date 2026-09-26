@@ -294,3 +294,65 @@ mixes model quality with how hard each task is.
 | §3.5: winsorization and Min-Max scaling applied for all models | Neither is used by VARMAX or XGBoost; the LSTM scales only its own two inputs |
 | §4.3: LSTM shows "robustness when retrained on new conditions" | The LSTM is trained once, on data to 2015, and never retrained |
 | §4.3: residual ACF/PACF shows the VAR is misspecified | The plots show errors of 1- to 112-step forecasts, which are autocorrelated by construction |
+
+---
+
+## 9. Granger causality, impulse responses and variance decomposition
+
+Code: `improved/causality.py`. Outputs: `improved/results{,_latest}/tables/granger_*.csv`,
+`irf_*.csv`, `fevd_12m.csv` and the plots `granger_causality.png`,
+`impulse_responses.png` and `variance_decomposition.png`.
+
+These tests answer research question 1 directly: do related commodity markets
+carry information about oil prices? All of them use monthly log-returns.
+
+**Granger causality.** Each test uses a two-variable VAR with its lag chosen
+by BIC, in both directions, and p-values are Holm-corrected across 32 tests.
+
+| Direction | Result (full sample, thesis data) |
+|---|---|
+| Related commodity → oil | **None significant after correction.** Copper is closest (raw p ≈ 0.004, Holm p ≈ 0.09) |
+| All 8 commodities jointly → oil | Borderline: p = 0.04 (Brent), 0.06 (WTI); latest data 0.08; training window 0.24 |
+| **Oil → related commodity** | **Strong.** Oil leads Japanese LNG (4-6 month lag, p < 0.001), US gas (2 months), European gas and South African coal |
+
+Oil leading Japanese LNG by 4-6 months matches how LNG is priced: long-term
+Japanese contracts are indexed to crude oil with a lag. Information flows
+*from* oil *to* these markets, not the other way round.
+
+**Impulse responses** (generalized, from the 10-variable VAR). These show the
+cumulative change in the oil price over 12 months after a typical
+(one standard deviation) monthly move in each market, with 90% bootstrap bands:
+
+| Move in | Brent after 12 months | Share of it in the same month |
+|---|---|---|
+| Copper (+5.7%) | +5.9% | 43% |
+| Coal, SA / AU (+6.7% / +6.6%) | +3.6% / +3.3% | about 50% |
+| Palm oil (+6.9%) | +3.5% | 37% |
+| Gold (+3.4%) | +2.4% | 54% |
+| US gas (+13.8%) | +2.1% | 55% |
+| European gas (+8.9%) | +0.1% (band includes 0) | — |
+| Japanese LNG (+4.3%) | −1.0% (band includes 0) | — |
+
+Most of the response is same-month co-movement, not a lead. Part of the
+follow-through in later months reflects oil's own momentum, which the
+World Bank's monthly averaging exaggerates.
+
+**Variance decomposition** (share of 12-month forecast surprises): Brent and
+WTI account for about 86% of each other's surprises. Copper is the largest
+outside source at about 5%. European gas contributes 0.1-0.2%.
+
+**What this adds to the thesis:**
+- **Copper confirmed, European gas not.** Your SHAP analysis ranked copper and
+  European gas top for Brent. Copper holds up as the strongest co-mover and
+  the closest thing to a leading indicator. European gas carries almost no
+  information in returns, so its SHAP importance most likely came from shared
+  *trends in price levels* (for example 2021-22), which the XGBoost model
+  split on, rather than from predictive dynamics.
+- **It explains the forecasting results.** No related market reliably leads
+  oil, so adding them can't improve forecasts. That is why the 10-commodity
+  VAR is no better than the single-series AR.
+- **A positive finding to pair with the negative one.** Oil is the leading
+  market: it predicts gas and LNG prices, not the reverse.
+
+Caveats: Granger causality means predictive precedence, not causation. The
+monthly averages can create spurious lead-lag relations. The VAR is linear.
