@@ -265,3 +265,32 @@ then fell back to about $85. Outputs: `improved/results_latest/`.
 - **2026 spike (h = 1):** AR and VECM are 5-7% better than no-change, the
   LSTM is level with it, and XGBoost is 5-10% worse. Simple persistence models
   again cope best with a sharp shock.
+
+---
+
+## 8. Design intent from the full thesis
+
+The full thesis (UiTM, examined 2 August 2025) explains choices that the code
+alone does not. Read the critique above in that light:
+
+| Choice | Reason given in the thesis | Revised view |
+|---|---|---|
+| Only multivariate models; no univariate or naive model | Scope (§1.6): univariate models were excluded because they ignore cross-variable interactions | The ranking *among the three* is correct as reported. A naive forecast is a yardstick, not a competing model: adding one stays within scope and shows whether the best model is useful |
+| VARMAX given the actual exogenous prices in the test period | An interpretable econometric model with contemporaneous exogenous effects (the B term), aimed at impulse-response and scenario analysis | Valid as a **conditional (scenario) forecast**: "given what gas, coal and metals did, where would oil be?" It is not a real-time forecast, so it isn't comparable with the other two |
+| XGBoost uses only last month's *other* commodities | A deliberate choice "to avoid data leakage"; tests how far related markets explain oil. The SHAP chapter is built on it | A coherent cross-market explanatory model. It answers a different question from the LSTM |
+| LSTM on Brent and WTI's own 15-month history | Captures long-term dependencies in the oil series themselves | A one-step forecast, the task closest to the naive forecast |
+
+The three models answer three different questions, so the RMSE ranking
+mixes model quality with how hard each task is.
+
+### Statements in the thesis that don't match the code or the charts
+
+| Thesis says | Code and charts show |
+|---|---|
+| §4.3: in 2021-23 "XGBoost overshoots significantly, forecasting a peak of over 160 USD", while "VARMAX lags in responsiveness" | The overshoot is **VARMAX**: Brent 172.0 and WTI 157.3 in Apr 2022 (`tables/forecast_varmax.csv`). XGBoost stays around 110 or below |
+| Ch. 5: the study "incorporated … exchange rates, industrial production, consumer price index (CPI), and interest rates" | Only the 10 commodity prices are used |
+| §1.6: data from 2010 to 2024; §3.4: from 1960 to 2024 | The code uses 1982-01 to 2025-04 |
+| §3.6: testing Jan 2016 to Dec 2024 | The test set runs to Apr 2025 |
+| §3.5: winsorization and Min-Max scaling applied for all models | Neither is used by VARMAX or XGBoost; the LSTM scales only its own two inputs |
+| §4.3: LSTM shows "robustness when retrained on new conditions" | The LSTM is trained once, on data to 2015, and never retrained |
+| §4.3: residual ACF/PACF shows the VAR is misspecified | The plots show errors of 1- to 112-step forecasts, which are autocorrelated by construction |
