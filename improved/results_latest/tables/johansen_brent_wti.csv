@@ -1,3 +1,5 @@
-H0: rank <=,trace stat,5% critical value,reject H0
-0,41.00098888745144,15.4943,True
-1,2.6266289119440644,3.8415,False
+case,k_ar_diff,H0: rank <=,trace stat,trace 5% cv,max-eig stat,max-eig 5% cv,reject H0 (trace)
+unrestricted constant (used by VECM),1,0,44.25862445449681,15.4943,41.603589525056684,14.2639,True
+unrestricted constant (used by VECM),1,1,2.6550349294401245,3.8415,2.6550349294401245,3.8415,False
+restricted constant (robustness),1,0,44.26489120559183,20.2618,,,True
+restricted constant (robustness),1,1,2.660768732704566,9.1645,,,False

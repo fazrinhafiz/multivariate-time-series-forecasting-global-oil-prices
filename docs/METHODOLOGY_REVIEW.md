@@ -1,5 +1,10 @@
 # Methodology review of the submitted pipeline
 
+> **Revision note.** Sections 1-5 and 8 review the original thesis code. Sections
+> 6, 7 and 9 describe the 2026 re-audit; they were revised after a follow-up audit,
+> and section 10 lists what changed and why. Where an earlier statement here was
+> wrong or too strong, it has been corrected in place and noted in section 10.
+
 This review covers `code_full.py` / `code_full.ipynb` and `Report.pdf` as submitted
 (the first commit in this repo). It is written the way an external examiner
 would read the work. Line numbers refer to `code_full.py`.
@@ -27,20 +32,29 @@ by anyone, including you.
 
 ## 2. Critical issues (these change the conclusions)
 
-### 2.1 No naive benchmark, and the naive benchmark beats every model
+### 2.1 No naive benchmark
 
-The standard benchmark in oil price forecasting is the **random walk
-(no-change) forecast**: next month's price equals this month's (Alquist, Kilian
-& Vigfusson, 2013). On the same 112 test months it scores:
+The standard benchmark in oil price forecasting is the **no-change (naive)
+forecast** (Alquist, Kilian & Vigfusson, 2013). The fair naive benchmark depends on
+the task each model was given, so each submitted model is compared with the naive
+forecast for *its* task, on the same 112 test months:
 
-| RMSE ($/bbl) | VARMAX | XGBoost | LSTM | **Random walk** |
-|---|---|---|---|---|
-| Brent | 18.54 | 16.15 | 9.14 | **5.93** |
-| WTI | 15.67 | 11.29 | 7.07 | **5.77** |
+| RMSE ($/bbl) | Submitted model | Matching naive forecast | Model better? |
+|---|---|---|---|
+| Brent, XGBoost (one month ahead) | 16.15 | 5.93 (one-step naive) | No |
+| Brent, LSTM (one month ahead) | 9.14 | 5.93 (one-step naive) | No |
+| Brent, VARMAX (1-112 months ahead from Dec 2015) | 18.54 | 35.65 (static naive: Dec-2015 price held flat) | Yes, but it was given the actual future prices of the other commodities |
+| WTI, XGBoost | 11.29 | 5.77 | No |
+| WTI, LSTM | 7.07 | 5.77 | No |
+| WTI, VARMAX | 15.67 | 31.97 | Yes, with the same caveat |
 
-All three submitted models are worse than doing nothing. An examiner who knows
-the oil forecasting literature will check this first.
-Plot: `improved/results/plots/original_vs_random_walk.png`.
+The two one-step models are worse than doing nothing. VARMAX beats its matching
+naive forecast, but as a *scenario* model: with real-time inputs it would not have
+had those commodity prices. (An earlier version of this section compared VARMAX
+with the one-step naive forecast and said all three models lost to naive; that
+was the wrong comparison for VARMAX's task.)
+Table and plot: `improved/results/tables/original_results_vs_matching_naive.csv`,
+`improved/results/plots/original_vs_matching_naive.png`.
 
 ### 2.2 The three models answer three different questions
 
@@ -145,126 +159,134 @@ prices, and the opposite of the report's conclusion for Brent.
 
 ---
 
-## 5. What the improved pipeline changes
+## 5. What the re-audit pipeline changes
 
 Code: `improved/`. How to run it: `improved/README.md`.
 
-| Issue | Fix |
+| Issue in the thesis pipeline | Re-audit design |
 |---|---|
-| No benchmark | Random walk and univariate AR are included. Every metric is also reported relative to the random walk |
-| Different tasks per model | **One protocol.** Every model forecasts h = 1, 3 and 6 months ahead, from the same origins, using only data available at the origin |
+| No benchmark | No-change (naive) and univariate AR baselines. Every metric is also reported relative to no-change |
+| Different tasks per model | **One protocol.** Every model forecasts h = 1, 3 and 6 months ahead from the same origins, using only data available at the origin |
 | Oracle exogenous variables | The VAR treats all 10 commodities as endogenous, so it forecasts them instead of being given them |
-| Static single split | Expanding window. AR, VAR and VECM are re-estimated every month; XGBoost and the LSTM are re-trained every January |
-| No significance test | Diebold-Mariano with the HLN correction, against the random walk |
-| Unreproducible LSTM | Fixed seeds, deterministic ops, and a 3-seed ensemble average |
-| Invented data | The sample starts in 1984-01, so no imputation is needed |
-| Levels | All models work on log-returns |
-| Scaler leakage | Scalers are fitted on each training window only |
-| Wrong diagnostics | ADF + KPSS, Johansen, VAR lag selection, Ljung-Box and ARCH-LM on residuals, all on the training window |
-| Cointegration ignored | VECM added |
-| RQ2 not answered | Scores are broken down by period: 2016-19 (calm), 2020-21 (COVID), 2022-25 (energy crisis) |
-| Leakage risk | `improved/tests/test_no_lookahead.py` changes all data after the last forecast origin and checks that no forecast moves. A deliberately leaky model is caught |
-
-Results: see `improved/results/` and section 6 below.
+| Static single split | Rolling origins, expanding window. AR, VAR and VECM re-estimated every month; XGBoost and the LSTM re-trained every January |
+| No significance test | Clark-West (primary; the benchmark is nested) and Diebold-Mariano (secondary), both Holm-corrected across the 30 comparisons per window |
+| Untuned ML models | Hyperparameters chosen on a validation window (2010-01 to 2015-12) that ends before the test |
+| Unreproducible LSTM | Fixed seeds, deterministic ops, 3-seed average |
+| Invented data | Sample starts in 1984-01, so nothing is imputed |
+| Levels | Log-returns (VECM on log levels) |
+| Scaler fitted on the full sample | Scalers fitted on each training window only |
+| Invalid diagnostics | ADF + KPSS, Johansen (both deterministic cases), VAR lag selection, Ljung-Box and ARCH-LM on residuals, all on the training window |
+| Cointegration ignored | VECM with the rank re-tested at every origin |
+| Test and later data mixed | Test (2016-01 to 2025-04) and holdout (2025-05 onwards) scored separately |
+| Leakage risk | Leakage tests for every pipeline, h = 1, 3, 6, three origin blocks, and the tuning step |
 
 ---
 
-## 6. Results of the improved pipeline
+## 6. Re-audit results: test window 2016-01 to 2025-04 (thesis data)
 
-Test period 2016-01 to 2025-04 (112 target months). DM p = two-sided
-Diebold-Mariano p-value against the random walk (HLN-corrected).
+Outputs: `improved/results/tables/scores_test.csv`. RMSE ÷ naive RMSE (below 1 =
+better than no-change); naive RMSE at h = 1 is 5.93 (Brent) and 5.77 (WTI).
 
-**Brent** (RMSE in $/bbl; rel. = RMSE ÷ random-walk RMSE)
+| Model | Brent h=1 | h=3 | h=6 | WTI h=1 | h=3 | h=6 |
+|---|---|---|---|---|---|---|
+| AR | 0.980 | 1.019 | 1.019 | 0.981 | 1.022 | 1.025 |
+| VAR | 0.989 | 1.017 | 1.014 | 0.995 | 1.015 | 1.017 |
+| VECM | 0.985 | 1.025 | 1.019 | 0.988 | 1.018 | 1.016 |
+| XGBoost | 1.045 | 1.174 | 1.354 | 1.086 | 1.223 | 1.410 |
+| LSTM | 1.003 | 1.036 | 1.045 | 0.981 | 1.009 | 1.025 |
 
-| Model | h=1 RMSE | h=1 rel. | h=1 DM p | h=3 rel. | h=3 DM p | h=6 rel. | h=6 DM p |
-|---|---|---|---|---|---|---|---|
-| Random walk | 5.93 | 1.000 | — | 1.000 | — | 1.000 | — |
-| AR | 5.81 | 0.980 | 0.58 | 1.019 | 0.15 | 1.019 | 0.40 |
-| VAR | 5.86 | 0.989 | 0.83 | 1.017 | 0.59 | 1.014 | 0.61 |
-| VECM | 5.83 | 0.984 | 0.66 | 1.020 | 0.09 | 1.009 | 0.64 |
-| XGBoost | 6.19 | 1.044 | 0.36 | 1.179 | 0.14 | 1.380 | 0.11 |
-| LSTM | 5.68 | 0.958 | 0.13 | 1.014 | 0.76 | 0.970 | 0.56 |
+**Clark-West p-values** (one-sided; H1: the forecast has predictive content), raw:
 
-**WTI** (RMSE in $/bbl; rel. = RMSE ÷ random-walk RMSE)
+| Model | Brent h=1 | h=3 | h=6 | WTI h=1 | h=3 | h=6 |
+|---|---|---|---|---|---|---|
+| AR | 0.067 | 0.734 | 0.642 | 0.320 | 0.801 | 0.802 |
+| VAR | 0.175 | 0.747 | 0.520 | 0.376 | 0.821 | 0.712 |
+| VECM | 0.244 | 0.812 | 0.749 | 0.328 | 0.754 | 0.567 |
+| XGBoost | 0.118 | 0.879 | 0.924 | 0.184 | 0.848 | 0.892 |
+| LSTM | 0.097 | 0.580 | 0.274 | **0.006** | 0.295 | 0.182 |
 
-| Model | h=1 RMSE | h=1 rel. | h=1 DM p | h=3 rel. | h=3 DM p | h=6 rel. | h=6 DM p |
-|---|---|---|---|---|---|---|---|
-| Random walk | 5.77 | 1.000 | — | 1.000 | — | 1.000 | — |
-| AR | 5.66 | 0.981 | 0.59 | 1.022 | 0.08 | 1.025 | 0.29 |
-| VAR | 5.74 | 0.995 | 0.91 | 1.015 | 0.63 | 1.017 | 0.37 |
-| VECM | 5.69 | 0.986 | 0.69 | 1.013 | 0.60 | 1.006 | 0.89 |
-| XGBoost | 6.06 | 1.050 | 0.32 | 1.197 | 0.19 | 1.445 | 0.12 |
-| LSTM | 5.62 | 0.973 | 0.25 | 1.032 | 0.50 | 1.020 | 0.59 |
+After Holm correction across these 30 tests, the smallest p-value is 0.178 (LSTM,
+WTI, h = 1). The only raw Diebold-Mariano p below 0.05 is the VECM for Brent at
+h = 3 (p = 0.037), a model that is *worse* than no-change; its Holm p-value is 1.0.
 
-**By period, h = 1** (relative RMSE vs random walk)
+**Tuning** (`tables/tuning_validation.csv`): at every horizon the validation window
+chose the simplest candidates. For XGBoost that was depth 2 and learning rate 0.03;
+for the LSTM, a 6-month window and 16 units. Every candidate was worse than
+no-change on the validation window (XGBoost 1.09-1.21, LSTM 1.00-1.19). The fixed
+settings used before tuning was added (LSTM window 12, 32 units) had scored 0.958 for
+Brent at h = 1 on the *test* set. Reporting that setting now would be choosing by
+test-set performance, so the validation choice is reported instead.
 
-| Target | Model | 2016-19 (calm) | 2020-21 (COVID) | 2022-25 (energy crisis) |
+**VECM** (`tables/vecm_rank_path.csv`): lag 1 (BIC); Johansen rank 1 at all 112
+origins for every horizon. The restricted-constant check also gives rank 1 (trace
+43.98 vs 20.26 for rank 0; 2.66 vs 9.16 for rank 1).
+
+**By period, h = 1** (descriptive; windows chosen after seeing the data):
+
+| Target | Model | 2016-19 (48 months) | 2020-21 COVID (24) | 2022-25 (40) |
 |---|---|---|---|---|
 | Brent | AR | 0.982 | 0.912 | 1.020 |
 | Brent | VAR | 1.046 | 0.968 | 0.972 |
-| Brent | VECM | 1.013 | 0.924 | 1.005 |
-| Brent | XGBoost | 1.018 | 0.939 | 1.118 |
-| Brent | LSTM | 1.001 | 0.931 | 0.953 |
+| Brent | VECM | 1.013 | 0.925 | 1.008 |
+| Brent | XGBoost | 1.026 | 0.936 | 1.118 |
+| Brent | LSTM | 1.012 | 1.008 | 0.995 |
 | WTI | AR | 1.009 | 0.917 | 1.014 |
 | WTI | VAR | 1.037 | 0.986 | 0.981 |
-| WTI | VECM | 1.021 | 0.915 | 1.021 |
-| WTI | XGBoost | 0.997 | 0.971 | 1.133 |
-| WTI | LSTM | 0.989 | 0.950 | 0.984 |
+| WTI | VECM | 1.023 | 0.916 | 1.023 |
+| WTI | XGBoost | 0.995 | 0.989 | 1.196 |
+| WTI | LSTM | 0.988 | 0.993 | 0.967 |
 
-### What the results say
+### What the results support
 
-1. **Nothing significantly beats no-change.** None of the 30 model-horizon
-   comparisons rejects equal accuracy at 5%. The lowest DM p-value is 0.08.
-2. **h = 1:** every model except XGBoost is 1-4% better than no-change, which
-   is within noise. The LSTM gets closest (Brent 0.958, p = 0.13).
-3. **h = 3 and h = 6:** the econometric models and the LSTM sit at 0.97-1.03.
-   **XGBoost is 18-45% worse than no-change.** The direct multi-step tree model
-   overfits pre-2016 patterns and misses the 2021-22 run-up (see
-   `plots/forecasts_h6_brent.png`).
-4. **By period (RQ2):** during COVID (2020-21), every model beats no-change by
-   1-9%. The collapse and rebound had momentum, and univariate AR and the VECM
-   do best (≈0.91-0.92). In the 2022-25 energy crisis, the LSTM and VAR are
-   slightly better (0.95-0.98) and XGBoost is 12-13% worse. In the calm
-   period (2016-19), nothing helps.
-5. **Multivariate information adds little.** The univariate AR is as good as
-   the 10-variable VAR at every horizon. That's the direct answer to RQ1.
-6. **Direction:** the LSTM calls the direction of the next month's move right
-   59% (Brent) and 61% (WTI) of the time. A binomial test against 50% gives
-   p = 0.07 and 0.03. After allowing for the number of comparisons, that's
-   suggestive at best.
+1. **No model shows significant predictive content over no-change** once the
+   nested-benchmark test is used and the 30 comparisons are corrected for. This is
+   consistent with the oil forecasting literature (Alquist, Kilian & Vigfusson, 2013).
+2. **Point estimates are within a few percent of no-change** for AR, VAR, VECM and
+   the LSTM; XGBoost is clearly worse at every horizon.
+3. **Related commodities add little** (RQ1): the 10-commodity VAR is no better than
+   the univariate AR.
+4. **On shocks (RQ2), only a description is possible.** AR and VECM were 8-9% better
+   than no-change in 2020-21 and roughly level elsewhere. Twenty-four months, chosen
+   after the fact, cannot establish which model handles shocks best.
 
-These results are consistent with the oil forecasting literature: at short
-horizons the no-change forecast is very hard to beat (Alquist, Kilian &
-Vigfusson, 2013).
+What the results do **not** support: any claim that a particular model is superior
+to no-change, or to the others, at these horizons.
 
 ---
 
-## 7. Update: re-run on the newest World Bank data (to 2026-08)
+## 7. Holdout: 2025-05 to 2026-08 (newer data)
 
-Data: `data/CMO-Historical-Data-Monthly_latest.xlsx`, published by the World
-Bank on 2026-09-02. Past values changed only by rounding (≤ $0.50). The test
-period now runs 2016-01 to 2026-08 (128 months). It includes a spring-2026
-spike: Brent went from $71 in February to $104 in March and $120 in April,
-then fell back to about $85. Outputs: `improved/results_latest/`.
+Data: `data/CMO-Historical-Data-Monthly_latest.xlsx`, published by the World Bank on
+2026-09-02. Past values differ from the thesis data only by rounding (at most
+$0.50). Outputs: `improved/results_latest/tables/scores_holdout.csv`.
 
-| RMSE ÷ random walk | Brent h=1 | h=3 | h=6 | WTI h=1 | h=3 | h=6 |
+**Status.**
+- No design decision in the current pipeline uses these months. Tuning uses data
+  to 2015-12; lags and ranks use data up to each origin.
+- An earlier version of the re-audit (September 2026) reported a pooled 2016-2026
+  window that included them, before this design was fixed. So they have been
+  seen, though not used.
+
+| Model | Brent h=1 | h=3 | h=6 | WTI h=1 | h=3 | h=6 |
 |---|---|---|---|---|---|---|
-| AR | 0.964 | 1.034 | 1.014 | 0.975 | 1.028* | 1.021 |
-| VAR | 1.006 | 1.041 | 1.006 | 0.989 | 1.027 | 1.009 |
-| VECM | 0.971 | 1.036 | 1.005 | 0.975 | 1.024 | 0.995 |
-| XGBoost | 1.062 | 1.129 | 1.291 | 1.060 | 1.165 | 1.356 |
-| LSTM | 0.976 | 1.001 | 0.959 | 0.983 | 1.006 | 0.995 |
+| AR | 0.935 | 1.061 | 0.999 | 0.956 | 1.044 | 1.002 |
+| VAR | 1.039 | 1.084 | 0.978 | 0.973 | 1.059 | 0.973 |
+| VECM | 0.950 | 1.070 | 0.982 | 0.940 | 1.062 | 0.940 |
+| XGBoost | 1.080 | 1.004 | 1.026 | 1.048 | 0.974 | 0.971 |
+| LSTM | 0.990 | 0.974 | 0.944 | 0.985 | 0.966 | 0.963 |
 
-\* The only significant difference (DM p = 0.048), and it's a model doing
-*worse* than no-change.
+Naive RMSE at h = 1: Brent 11.67, WTI 8.56. That's twice the test window's, because
+of the spring-2026 spike: Brent went from $71 in February to $120 in April.
 
-- **The conclusion holds.** No model significantly beats no-change at any horizon.
-- **The LSTM's small edge shrinks.** Brent h = 1 goes from 0.958 to 0.976,
-  and directional accuracy falls to 56-57%. The earlier edge was partly luck
-  of the sample period.
-- **2026 spike (h = 1):** AR and VECM are 5-7% better than no-change, the
-  LSTM is level with it, and XGBoost is 5-10% worse. Simple persistence models
-  again cope best with a sharp shock.
+- **Nothing is significant after correction.** The lowest Clark-West Holm p-value
+  is 0.88; the lowest raw value is 0.029 (VECM, WTI, h = 1).
+- **Sixteen months are too few** to separate models that differ by a few percent.
+- The test window re-scored on this data vintage (`results_latest/tables/scores_test.csv`)
+  matches §6 closely. The one difference is the tuned LSTM for h = 1 (window 12
+  instead of 6), which shows that choice is sensitive to small data revisions.
+
+An earlier version of this section pooled 2016-2026 into one window and called one
+uncorrected DM result (p = 0.048) significant. Both have been corrected; see §10.
 
 ---
 
@@ -307,7 +329,9 @@ These tests answer research question 1 directly: do related commodity markets
 carry information about oil prices? All of them use monthly log-returns.
 
 **Granger causality.** Each test uses a two-variable VAR with its lag chosen
-by BIC, in both directions, and p-values are Holm-corrected across 32 tests.
+by BIC, in both directions, and p-values are Holm-corrected across the 34 tests
+in each sample (9 partners x 2 oil series x 2 directions, with the Brent-WTI pair
+counted once per direction).
 
 | Direction | Result (full sample, thesis data) |
 |---|---|
@@ -342,12 +366,13 @@ WTI account for about 86% of each other's surprises. Copper is the largest
 outside source at about 5%. European gas contributes 0.1-0.2%.
 
 **What this adds to the thesis:**
-- **Copper confirmed, European gas not.** Your SHAP analysis ranked copper and
-  European gas top for Brent. Copper holds up as the strongest co-mover and
-  the closest thing to a leading indicator. European gas carries almost no
-  information in returns, so its SHAP importance most likely came from shared
-  *trends in price levels* (for example 2021-22), which the XGBoost model
-  split on, rather than from predictive dynamics.
+- **Copper is the strongest candidate; European gas shows nothing.** The thesis's
+  SHAP analysis ranked copper and European gas top for Brent. Copper is the largest
+  outside co-mover and the closest thing to a leading indicator, but its lead is
+  **not significant** after correction (Holm p ≈ 0.09-0.15). European gas carries
+  almost no information in returns. A plausible explanation for its SHAP importance
+  is that the thesis's XGBoost used price *levels*, which trend together (for example
+  in 2021-22); that explanation has not been tested.
 - **It explains the forecasting results.** No related market reliably leads
   oil, so adding them can't improve forecasts. That is why the 10-commodity
   VAR is no better than the single-series AR.
@@ -355,4 +380,30 @@ outside source at about 5%. European gas contributes 0.1-0.2%.
   market: it predicts gas and LNG prices, not the reverse.
 
 Caveats: Granger causality means predictive precedence, not causation. The
-monthly averages can create spurious lead-lag relations. The VAR is linear.
+monthly averages can create spurious lead-lag relations. The VAR is linear. The
+F-tests assume homoskedastic errors, but the residuals show strong ARCH effects
+(§3 diagnostics), so the p-values are approximate; heteroskedasticity-robust tests
+have not been run. The oil-indexed LNG explanation is a plausible domain
+interpretation, not something the data can confirm.
+
+---
+
+## 10. Revision after the follow-up audit (September 2026)
+
+A later audit of the re-audit itself found problems in the re-audit pipeline and in
+this document. What was changed:
+
+| Audit finding | Change | Where |
+|---|---|---|
+| Diebold-Mariano is undersized when the benchmark (no-change) is nested in the models | **Clark-West** test added as the primary test of predictive content; DM kept as a secondary accuracy test | `evaluate.py` |
+| 30 DM tests per window, no multiplicity correction; one raw p = 0.048 was reported as "significant" | **Holm correction** across the 30 tests per window for both CW and DM; the p = 0.048 claim withdrawn | `evaluate.add_holm`; §6-7 |
+| VECM: rank tested with an unrestricted constant but model fitted with a restricted one; rank forced to be ≥ 1 and chosen once; Johansen lag in diagnostics hard-coded at 2 | Model and test now use the same case (unrestricted constant). **Rank re-tested at every origin**, rank 0 allowed. Diagnostics use the VECM's own BIC lag, report trace and max-eigenvalue, and add a hand-written restricted-constant test (checked against statsmodels for the unrestricted case) | `models.run_vecm`, `diagnostics.johansen` |
+| XGBoost and LSTM hyperparameters fixed without validation | **Validation window 2010-01 to 2015-12** (data truncated at 2015-12 before tuning); small grids; chosen per horizon | `tuning.py` |
+| Leakage tests covered h = 3 and 12 origins only | 8 pipelines x h = 1, 3, 6 x three origin blocks, the tuning step, and a leaky-model control per horizon | `tests/test_no_lookahead.py` |
+| The "naive beats all three thesis models" claim used the one-step naive forecast for VARMAX's multi-step task | Each thesis model compared with the naive forecast for its own task; VARMAX beats the static naive forecast (with oracle inputs) | §2.1; `run_all.original_vs_naive` |
+| "Holm-corrected across 32 tests" | Corrected to 34 | §9 |
+| "Copper confirmed" | Rewritten: largest co-mover, lead not significant after correction | §9 |
+| Granger F-tests assume homoskedastic errors despite ARCH effects | Stated as a caveat (not re-run) | §9 |
+| Test and holdout months were pooled in the 2016-2026 table | Scored separately: test 2016-01 to 2025-04, holdout 2025-05 onwards | `run_all.py`; §7 |
+| `improved/results/` had been produced by an earlier code version, with an ad hoc format conversion | Both results folders deleted and regenerated from scratch by the current code | `improved/results*/` |
+| Period breakdown presented as evidence about shocks | Labelled descriptive; windows chosen after seeing the data; month counts shown | `evaluate.py`; plots |

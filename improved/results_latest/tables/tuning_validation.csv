@@ -1,0 +1,31 @@
+horizon,model,candidate,params,val rel. RMSE,selected
+1,XGBoost,0,"{'n_estimators': 400, 'max_depth': 3, 'learning_rate': 0.03, 'subsample': 0.8, 'colsample_bytree': 0.8, 'min_child_weight': 5}",1.112686012737972,False
+1,XGBoost,1,"{'n_estimators': 400, 'max_depth': 2, 'learning_rate': 0.03, 'subsample': 0.8, 'colsample_bytree': 0.8, 'min_child_weight': 5}",1.0775927859622347,True
+1,XGBoost,2,"{'n_estimators': 400, 'max_depth': 2, 'learning_rate': 0.1, 'subsample': 0.8, 'colsample_bytree': 0.8, 'min_child_weight': 5}",1.1745630527642097,False
+1,XGBoost,3,"{'n_estimators': 400, 'max_depth': 3, 'learning_rate': 0.1, 'subsample': 0.8, 'colsample_bytree': 0.8, 'min_child_weight': 5}",1.1836655141640322,False
+1,XGBoost,4,"{'n_estimators': 400, 'max_depth': 4, 'learning_rate': 0.03, 'subsample': 0.8, 'colsample_bytree': 0.8, 'min_child_weight': 5}",1.1148361675929235,False
+1,XGBoost,5,"{'n_estimators': 400, 'max_depth': 4, 'learning_rate': 0.1, 'subsample': 0.8, 'colsample_bytree': 0.8, 'min_child_weight': 5}",1.1843259189688937,False
+1,LSTM,0,"{'window': 12, 'units': 32}",1.0482687275441012,False
+1,LSTM,1,"{'window': 6, 'units': 16}",1.0166963477413442,False
+1,LSTM,2,"{'window': 6, 'units': 32}",1.0282161540491215,False
+1,LSTM,3,"{'window': 12, 'units': 16}",1.0142145159485345,True
+3,XGBoost,0,"{'n_estimators': 400, 'max_depth': 3, 'learning_rate': 0.03, 'subsample': 0.8, 'colsample_bytree': 0.8, 'min_child_weight': 5}",1.1243370565874948,False
+3,XGBoost,1,"{'n_estimators': 400, 'max_depth': 2, 'learning_rate': 0.03, 'subsample': 0.8, 'colsample_bytree': 0.8, 'min_child_weight': 5}",1.1082468641778829,True
+3,XGBoost,2,"{'n_estimators': 400, 'max_depth': 2, 'learning_rate': 0.1, 'subsample': 0.8, 'colsample_bytree': 0.8, 'min_child_weight': 5}",1.2336544600724229,False
+3,XGBoost,3,"{'n_estimators': 400, 'max_depth': 3, 'learning_rate': 0.1, 'subsample': 0.8, 'colsample_bytree': 0.8, 'min_child_weight': 5}",1.1657338531523642,False
+3,XGBoost,4,"{'n_estimators': 400, 'max_depth': 4, 'learning_rate': 0.03, 'subsample': 0.8, 'colsample_bytree': 0.8, 'min_child_weight': 5}",1.1223124860831808,False
+3,XGBoost,5,"{'n_estimators': 400, 'max_depth': 4, 'learning_rate': 0.1, 'subsample': 0.8, 'colsample_bytree': 0.8, 'min_child_weight': 5}",1.1358917430856468,False
+3,LSTM,0,"{'window': 12, 'units': 32}",1.0827245493641686,False
+3,LSTM,1,"{'window': 6, 'units': 16}",1.001094579408767,True
+3,LSTM,2,"{'window': 6, 'units': 32}",1.0326129797153238,False
+3,LSTM,3,"{'window': 12, 'units': 16}",1.0332719506664851,False
+6,XGBoost,0,"{'n_estimators': 400, 'max_depth': 3, 'learning_rate': 0.03, 'subsample': 0.8, 'colsample_bytree': 0.8, 'min_child_weight': 5}",1.165507032762164,False
+6,XGBoost,1,"{'n_estimators': 400, 'max_depth': 2, 'learning_rate': 0.03, 'subsample': 0.8, 'colsample_bytree': 0.8, 'min_child_weight': 5}",1.1042165087067342,True
+6,XGBoost,2,"{'n_estimators': 400, 'max_depth': 2, 'learning_rate': 0.1, 'subsample': 0.8, 'colsample_bytree': 0.8, 'min_child_weight': 5}",1.22002411453371,False
+6,XGBoost,3,"{'n_estimators': 400, 'max_depth': 3, 'learning_rate': 0.1, 'subsample': 0.8, 'colsample_bytree': 0.8, 'min_child_weight': 5}",1.2461258437536298,False
+6,XGBoost,4,"{'n_estimators': 400, 'max_depth': 4, 'learning_rate': 0.03, 'subsample': 0.8, 'colsample_bytree': 0.8, 'min_child_weight': 5}",1.1434970892403507,False
+6,XGBoost,5,"{'n_estimators': 400, 'max_depth': 4, 'learning_rate': 0.1, 'subsample': 0.8, 'colsample_bytree': 0.8, 'min_child_weight': 5}",1.1999027105056694,False
+6,LSTM,0,"{'window': 12, 'units': 32}",1.1177617141777196,False
+6,LSTM,1,"{'window': 6, 'units': 16}",1.0201268329939097,True
+6,LSTM,2,"{'window': 6, 'units': 32}",1.0959927055012202,False
+6,LSTM,3,"{'window': 12, 'units': 16}",1.066946512800885,False
