@@ -216,8 +216,6 @@ Naive RMSE at h = 1: Brent 11.67, WTI 8.56.
 | `improved/results_latest/` | Part 3 holdout (`scores_holdout.csv`), plus the test window re-scored on the newer data vintage |
 | `docs/METHODOLOGY_REVIEW.md` | Review of the thesis code, re-audit results, thesis design intent, causality, and the list of revisions (§10) |
 | `docs/EXECUTION_LOG.md` | What every section of both pipelines runs, and every review run |
-| `docs/REPORT_FEEDBACK.md` | Notes on `Report.pdf` |
-| `docs/VIVA_PREP.md` | Archived question list |
 
 ## Quick start
 
